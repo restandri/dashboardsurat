@@ -322,16 +322,85 @@
   }
   footer span { color: var(--primary-dark); font-weight: 700; }
 
+  /* HAMBURGER BUTTON */
+  .hamburger-btn {
+    display: none;
+    background: none; border: none; font-size: 22px;
+    cursor: pointer; color: var(--text-main); padding: 4px 8px;
+    border-radius: var(--radius-sm); transition: background .15s;
+    flex-shrink: 0;
+  }
+  .hamburger-btn:hover { background: var(--primary-light); }
+
+  /* SIDEBAR OVERLAY (mobile) */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35); z-index: 199;
+  }
+  .sidebar-overlay.open { display: block; }
+
   /* RESPONSIVE */
   @media (max-width: 900px) {
     .stat-grid { grid-template-columns: 1fr 1fr; }
     .rekap-grid { grid-template-columns: 1fr; }
     .panel-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 680px) {
-    .sidebar { display: none; }
-    .main-content { padding: 14px; margin-left: 0; }
+    /* Sidebar slide-in */
+    .sidebar {
+      display: flex !important;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 200;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* Hamburger tampil */
+    .hamburger-btn { display: inline-flex; }
+
+    /* Main content */
+    .main-content { padding: 12px; margin-left: 0; }
+
+    /* Header */
+    .header { padding: 0 12px; gap: 6px; }
+    .header-date { display: none; }
+    .header-title { font-size: 14px; }
+    .header-sub { display: none; }
+    .header-badge { font-size: 10px; padding: 3px 8px; }
+    .btn-save-json { font-size: 11px; padding: 6px 10px; }
+
+    /* Stat cards */
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .stat-value { font-size: 24px; }
+    .stat-card { padding: 14px 14px; }
+
+    /* Filter bar */
+    .filter-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .filter-bar input[type="text"] { min-width: unset; width: 100%; }
+    .filter-bar select { width: 100%; }
+
+    /* Section header */
+    .section-header { flex-wrap: wrap; gap: 8px; }
+
+    /* Table footer */
+    .table-footer { flex-direction: column; gap: 6px; text-align: center; }
+
+    /* Footer */
+    footer { margin-left: 0; padding: 12px 14px; }
+
+    /* Modal */
+    .modal { padding: 18px 14px 16px; }
+
+    /* Form */
+    .form-grid { grid-template-columns: 1fr; }
+
+    /* Panel card */
+    .panel-card { padding: 16px 14px; }
+  }
+  @media (max-width: 400px) {
     .stat-grid { grid-template-columns: 1fr; }
+    .header-right { gap: 6px; }
   }
 
   .empty-state { text-align: center; padding: 38px 20px; color: var(--text-muted); font-size: 13px; }
@@ -395,12 +464,16 @@
 </head>
 <body>
 
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
 <!-- HEADER -->
 <header class="header">
   <div class="header-left">
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" title="Buka Menu">☰</button>
     <div class="header-logo">📄</div>
     <div>
-      <div class="header-title">Dashboard Arsip Surat</div>
+      <div class="header-title">Dashboard Surat</div>
       <div class="header-sub">Sistem Manajemen Surat Masuk & Surat Keluar</div>
     </div>
   </div>
@@ -1592,6 +1665,29 @@ function mulaiKosong() {
 function muatZIPWelcome(e) {
   muatZIP(e, true);
 }
+
+// ======================== RESPONSIVE SIDEBAR ========================
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+}
+
+// Tutup sidebar saat navigasi di mobile
+(function() {
+  const origShowPage = typeof showPage === 'function' ? showPage : null;
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (window.innerWidth <= 680) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.getElementById('sidebarOverlay').classList.remove('open');
+        }
+      });
+    });
+  });
+})();
 
 // Tampilkan welcome modal jika tidak ada cache — diurus oleh initFromCache()
 </script>
