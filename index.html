@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Arsip Surat</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --bg-main: #F5F7FA;
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --bg-header: #ffffff;
+    --primary: #2563EB;
+    --primary-light: #EFF6FF;
+    --primary-dark: #1D4ED8;
+    --secondary: #059669;
+    --secondary-light: #ECFDF5;
+    --accent-in: #2563EB;
+    --accent-out: #D97706;
+    --accent-in-light: #EFF6FF;
+    --accent-out-light: #FFFBEB;
+    --text-main: #1A202C;
+    --text-muted: #64748B;
+    --text-light: #94A3B8;
+    --border: #E2E8F0;
+    --shadow: 0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+    --shadow-md: 0 4px 20px rgba(37,99,235,0.15);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --sidebar-w: 240px;
+    --pink: #DB2777;
+    --pink-light: #FCE7F3;
+    --teal: #0891B2;
+    --teal-light: #ECFEFF;
+    --lavender: #7C3AED;
+    --lavender-light: #F5F3FF;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--bg-header);
+    border-bottom: 1.5px solid var(--border);
+    padding: 0 28px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 50%, #2563EB 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #fff; font-weight: 800; flex-shrink: 0;
+  }
+  .header-title { font-size: 17px; font-weight: 800; color: var(--primary-dark); line-height: 1.2; }
+  .header-sub { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .btn-save-json {
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    padding: 7px 16px; border-radius: var(--radius-sm); cursor: pointer;
+    border: 1.5px solid var(--primary); background: var(--primary); color: #fff;
+    transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-save-json:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+  .save-indicator { font-size: 11px; font-weight: 700; }
+  .header-badge {
+    background: var(--primary-light); color: var(--primary-dark);
+    font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+  }
+  .header-date { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+  /* LAYOUT */
+  .layout { display: flex; flex: 1; min-height: 0; }
+
+  /* MAIN CONTENT */
+  .main-content { flex: 1; padding: 24px 28px 24px 28px; overflow-y: auto; min-width: 0; margin-left: var(--sidebar-w); }
+
+  /* SIDEBAR (kiri - fixed) */
+  .sidebar {
+    width: var(--sidebar-w); background: var(--bg-sidebar);
+    border-right: 1.5px solid var(--border);
+    padding: 20px 14px;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto; flex-shrink: 0;
+    box-shadow: 2px 0 12px rgba(108,142,191,0.06);
+    position: fixed; left: 0; top: 64px; bottom: 0; z-index: 90;
+  }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 700; color: var(--text-light);
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 10px 8px 4px; margin-top: 6px;
+  }
+  .sidebar-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: all .18s; border: none; background: none;
+    font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text-main);
+    width: 100%; text-align: left;
+  }
+  .sidebar-btn:hover { background: var(--primary-light); color: var(--primary-dark); }
+  .sidebar-btn.active { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
+  .sidebar-btn .sb-icon {
+    width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .sb-icon.blue { background: var(--accent-in-light); }
+  .sb-icon.orange { background: var(--accent-out-light); }
+  .sb-icon.green { background: var(--secondary-light); }
+  .sb-icon.pink { background: var(--pink-light); }
+  .sb-icon.teal { background: var(--teal-light); }
+  .sb-icon.lavender { background: var(--lavender-light); }
+  .sb-icon.gray { background: #f0f2f5; }
+  .sb-divider { border: none; border-top: 1.5px solid var(--border); margin: 8px 0; }
+
+  /* STAT CARDS */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+  .stat-card {
+    background: var(--bg-card); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 6px;
+    border: 1.5px solid var(--border); position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .stat-card.blue::before { background: linear-gradient(90deg, var(--accent-in), var(--lavender)); }
+  .stat-card.orange::before { background: linear-gradient(90deg, var(--accent-out), var(--pink)); }
+  .stat-card.green::before { background: linear-gradient(90deg, var(--secondary), var(--teal)); }
+  .stat-card.lavender::before { background: linear-gradient(90deg, var(--lavender), var(--primary)); }
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .stat-value { font-size: 32px; font-weight: 800; color: var(--text-main); line-height: 1; }
+  .stat-icon { font-size: 22px; position: absolute; right: 18px; top: 18px; opacity: .25; }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+  .section-title .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.blue { background: var(--accent-in); }
+  .dot.orange { background: var(--accent-out); }
+  .dot.green { background: var(--secondary); }
+
+  /* FILTER BAR */
+  .filter-bar {
+    background: var(--bg-card); border-radius: var(--radius);
+    padding: 14px 18px; box-shadow: var(--shadow);
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .filter-bar input, .filter-bar select {
+    font-family: inherit; font-size: 13px; padding: 8px 14px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg-main); color: var(--text-main);
+    outline: none; transition: border .15s;
+  }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--primary); }
+  .filter-bar input[type="text"] { flex: 1; min-width: 160px; }
+  .filter-bar label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .btn { 
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 8px 18px; border-radius: var(--radius-sm); cursor: pointer;
+    border: none; transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--secondary); color: #fff; }
+  .btn-success:hover { background: #047857; }
+  .btn-warning { background: var(--accent-out); color: #fff; }
+  .btn-warning:hover { background: #B45309; }
+  .btn-soft { background: var(--primary-light); color: var(--primary-dark); }
+  .btn-soft:hover { background: #DBEAFE; }
+  .btn-danger { background: #FEE2E2; color: #991B1B; }
+  .btn-danger:hover { background: #DC2626; color: #fff; }
+  .btn-teal { background: var(--teal-light); color: #0E7490; }
+  .btn-teal:hover { background: var(--teal); color: #fff; }
+  .btn-pink { background: var(--pink-light); color: #9D174D; }
+  .btn-pink:hover { background: var(--pink); color: #fff; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--bg-card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1.5px solid var(--border);
+    overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  thead tr { background: var(--bg-main); }
+  thead th {
+    padding: 12px 14px; font-size: 11px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em;
+    text-align: left; border-bottom: 1.5px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #F8FAFF; }
+  tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+  }
+  .badge-masuk { background: var(--accent-in-light); color: #1D4ED8; }
+  .badge-keluar { background: var(--accent-out-light); color: #B45309; }
+  .table-footer {
+    padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
+    border-top: 1.5px solid var(--border); font-size: 12px; color: var(--text-muted);
+  }
+
+  /* PAGE SECTION */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* REKAP CARDS */
+  .rekap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .rekap-card {
+    background: var(--bg-card); border-radius: var(--radius);
+    padding: 20px 22px; box-shadow: var(--shadow); border: 1.5px solid var(--border);
+  }
+  .rekap-card-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .rekap-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+  .rekap-row:last-child { border-bottom: none; }
+  .rekap-val { font-weight: 700; color: var(--primary-dark); }
+
+  /* IMPORT/SYNC PANEL */
+  .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel-card {
+    background: var(--bg-card); border-radius: var(--radius);
+    padding: 22px 24px; box-shadow: var(--shadow); border: 1.5px solid var(--border);
+  }
+  .panel-card h3 { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .panel-card p { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+  .panel-card .btn-group { display: flex; flex-direction: column; gap: 10px; }
+  .file-drop-area {
+    border: 2px dashed var(--border); border-radius: var(--radius-sm);
+    padding: 22px; text-align: center; cursor: pointer;
+    transition: border-color .15s, background .15s;
+    color: var(--text-muted); font-size: 13px; margin-bottom: 12px;
+  }
+  .file-drop-area:hover { border-color: var(--primary); background: var(--primary-light); }
+  .file-drop-area .drop-icon { font-size: 28px; margin-bottom: 6px; }
+  input[type="file"] { display: none; }
+  .gs-input {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .gs-input input { flex: 1; font-family: inherit; font-size: 12px; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); outline: none; }
+  .gs-input input:focus { border-color: var(--primary); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(30,40,60,.35);
+    z-index: 1000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: var(--radius); box-shadow: 0 8px 40px rgba(37,99,235,.18);
+    max-width: 700px; width: 96vw; max-height: 90vh; overflow-y: auto;
+    padding: 28px 28px 22px;
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .modal-header h2 { font-size: 16px; font-weight: 800; color: var(--text-main); }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); transition: color .15s; }
+  .modal-close:hover { color: var(--text-main); }
+  .modal-body img, .modal-body iframe { max-width: 100%; border-radius: var(--radius-sm); border: 1.5px solid var(--border); }
+  .doc-preview { text-align: center; padding: 20px; }
+  .doc-preview .preview-icon { font-size: 56px; margin-bottom: 10px; }
+  .doc-preview p { font-size: 13px; color: var(--text-muted); }
+  .modal-actions { margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ADD/EDIT FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1/-1; }
+  .form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .form-group input, .form-group select, .form-group textarea {
+    font-family: inherit; font-size: 13px; padding: 9px 13px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    outline: none; transition: border .15s; color: var(--text-main);
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  /* TOAST */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: #1A202C; color: #fff; padding: 12px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; box-shadow: var(--shadow-md);
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn .25s ease;
+  }
+  .toast.success { background: #059669; }
+  .toast.error { background: #DC2626; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+
+  /* FOOTER */
+  footer {
+    background: #ffffff; border-top: 1.5px solid var(--border);
+    padding: 12px 28px; text-align: center;
+    font-size: 11.5px; color: #94A3B8; font-weight: 500;
+  }
+  footer span { color: var(--primary-dark); font-weight: 700; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .rekap-grid { grid-template-columns: 1fr; }
+    .panel-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 680px) {
+    .sidebar { display: none; }
+    .main-content { padding: 14px; margin-left: 0; }
+    .stat-grid { grid-template-columns: 1fr; }
+  }
+
+  .empty-state { text-align: center; padding: 38px 20px; color: var(--text-muted); font-size: 13px; }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 8px; }
+
+  .paging-btn { 
+    font-family: inherit; font-size: 12px; padding: 5px 10px; 
+    border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; background: #fff; color: var(--text-main);
+  }
+  .paging-btn:hover { background: var(--primary-light); }
+  .paging-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .attachment-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1.5px solid var(--border); cursor: pointer; }
+  .no-attachment { font-size: 12px; color: var(--text-light); font-style: italic; }
+  .sync-status { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  .progress-bar-outer { background: var(--bg-main); border-radius: 8px; height: 8px; overflow: hidden; margin-top: 8px; }
+  .progress-bar-inner { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--primary), var(--lavender)); transition: width .4s; }
+
+  /* ZOOM TOOLBAR */
+  .zoom-toolbar {
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    background: var(--bg-main); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 14px;
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .zoom-btn {
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
+    border: 1.5px solid var(--border); background: #fff; color: var(--text-main);
+    transition: all .15s; display: inline-flex; align-items: center; gap: 5px;
+    line-height: 1;
+  }
+  .zoom-btn:hover { background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary); }
+  .zoom-level {
+    font-size: 12px; font-weight: 700; color: var(--primary-dark);
+    min-width: 46px; text-align: center; background: var(--primary-light);
+    border-radius: 6px; padding: 5px 8px;
+  }
+  .zoom-img-wrap {
+    overflow: auto; max-height: 65vh; text-align: center;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: #F8FAFF; padding: 10px;
+    cursor: grab;
+  }
+  .zoom-img-wrap:active { cursor: grabbing; }
+  .zoom-img-wrap img {
+    transition: transform .2s; transform-origin: top center;
+    max-width: 100%; display: block; margin: 0 auto;
+    border: none; border-radius: 0;
+  }
+  .zoom-pdf-wrap {
+    overflow: auto; max-height: 65vh;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  }
+  .zoom-pdf-wrap iframe {
+    transition: transform .2s; transform-origin: top left;
+    display: block; border: none; border-radius: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">📄</div>
+    <div>
+      <div class="header-title">Dashboard Arsip Surat</div>
+      <div class="header-sub">Sistem Manajemen Surat Masuk & Surat Keluar</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-date" id="headerDate"></div>
+    <span class="save-indicator" id="saveIndicator"></span>
+    <button class="btn-save-json" id="btnSaveJson" onclick="simpanZIP()" title="Simpan semua data ke file ZIP">💾️ Simpan ZIP</button>
+    <div class="header-badge" id="totalBadge">0 Surat</div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR KIRI (FIXED) -->
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Utama</div>
+    <button class="sidebar-btn active" onclick="showPage('page-dashboard',this)">
+      <span class="sb-icon blue">🏠</span> Dashboard
+    </button>
+    <button class="sidebar-btn" onclick="showPage('page-semua',this)">
+      <span class="sb-icon green">🗂️</span> Semua Surat
+    </button>
+    <button class="sidebar-btn" onclick="showPage('page-tambah',this)">
+      <span class="sb-icon teal">✏️</span> Tambah Surat
+    </button>
+
+    <hr class="sb-divider">
+    <div class="sidebar-section-label">Filter</div>
+    <button class="sidebar-btn" onclick="showPage('page-filter-masuk',this)">
+      <span class="sb-icon blue">🔍</span> Surat Masuk
+    </button>
+    <button class="sidebar-btn" onclick="showPage('page-filter-keluar',this)">
+      <span class="sb-icon orange">🔎</span> Surat Keluar
+    </button>
+
+    <hr class="sb-divider">
+    <div class="sidebar-section-label">Data</div>
+    <button class="sidebar-btn" onclick="showPage('page-import',this)">
+      <span class="sb-icon lavender">⬆⬇</span> Impor & Sinkronisasi
+    </button>
+
+    <hr class="sb-divider">
+    <div class="sidebar-section-label">Lainnya</div>
+    <button class="sidebar-btn" onclick="hapusSemua()">
+      <span class="sb-icon gray">✂️️</span> Hapus Semua Data
+    </button>
+  </aside>
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">📥</div>
+          <div class="stat-label">Total Surat Masuk</div>
+          <div class="stat-value" id="statMasuk">0</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">📤</div>
+          <div class="stat-label">Total Surat Keluar</div>
+          <div class="stat-value" id="statKeluar">0</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">📋</div>
+          <div class="stat-label">Total Semua Surat</div>
+          <div class="stat-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card lavender">
+          <div class="stat-icon">🗂️</div>
+          <div class="stat-label">Bulan Ini</div>
+          <div class="stat-value" id="statBulanIni">0</div>
+        </div>
+      </div>
+
+      <div class="rekap-grid">
+        <div class="rekap-card">
+          <div class="rekap-card-title"><span>📈</span> Rekapitulasi per Bulan (Masuk)</div>
+          <div id="rekapMasukBulan"></div>
+        </div>
+        <div class="rekap-card">
+          <div class="rekap-card-title"><span>📉</span> Rekapitulasi per Bulan (Keluar)</div>
+          <div id="rekapKeluarBulan"></div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title"><span class="dot blue"></span>Surat Terbaru</div>
+        <button class="btn btn-primary btn-sm" onclick="showPage('page-tambah')">＋ Tambah Surat</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="tblDashboard">
+            <thead><tr>
+              <th>Nomor Surat</th><th>Tanggal</th><th>Pengirim/Tujuan</th><th>Jenis</th><th>Perihal</th><th>Aksi</th>
+            </tr></thead>
+            <tbody id="tbodyDashboard"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTER MASUK -->
+    <div class="page" id="page-filter-masuk">
+      <div class="section-header">
+        <div class="section-title"><span class="dot blue"></span>Surat Masuk</div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="fMasukQ" placeholder="🔍 Cari nomor, pengirim, perihal..." oninput="renderFilterMasuk()">
+        <label>Dari:</label><input type="date" id="fMasukDari" onchange="renderFilterMasuk()">
+        <label>s/d:</label><input type="date" id="fMasukSd" onchange="renderFilterMasuk()">
+        <button class="btn btn-soft btn-sm" onclick="resetFilter('masuk')">↺ Ulang</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Nomor Surat</th><th>Tanggal</th><th>Pengirim</th><th>Perihal</th><th>Isi/Keterangan</th><th>Dokumen</th><th>Aksi</th>
+            </tr></thead>
+            <tbody id="tbodyFilterMasuk"></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="filterMasukCount">0 surat ditemukan</span>
+          <div id="paginMasuk" style="display:flex;gap:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTER KELUAR -->
+    <div class="page" id="page-filter-keluar">
+      <div class="section-header">
+        <div class="section-title"><span class="dot orange"></span>Surat Keluar</div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="fKeluarQ" placeholder="🔍 Cari nomor, tujuan, perihal..." oninput="renderFilterKeluar()">
+        <label>Dari:</label><input type="date" id="fKeluarDari" onchange="renderFilterKeluar()">
+        <label>s/d:</label><input type="date" id="fKeluarSd" onchange="renderFilterKeluar()">
+        <button class="btn btn-soft btn-sm" onclick="resetFilter('keluar')">↺ Ulang</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Nomor Surat</th><th>Tanggal</th><th>Tujuan</th><th>Perihal</th><th>Isi/Keterangan</th><th>Dokumen</th><th>Aksi</th>
+            </tr></thead>
+            <tbody id="tbodyFilterKeluar"></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="filterKeluarCount">0 surat ditemukan</span>
+          <div id="paginKeluar" style="display:flex;gap:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEMUA SURAT -->
+    <div class="page" id="page-semua">
+      <div class="section-header">
+        <div class="section-title"><span class="dot green"></span>Semua Surat</div>
+        <button class="btn btn-primary btn-sm" onclick="showPage('page-tambah')">＋ Tambah Surat</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="fSemuaQ" placeholder="🔍 Cari surat..." oninput="renderSemua()">
+        <select id="fSemuaJenis" onchange="renderSemua()">
+          <option value="">Semua Jenis</option>
+          <option value="masuk">Masuk</option>
+          <option value="keluar">Keluar</option>
+        </select>
+        <label>Dari:</label><input type="date" id="fSemuaDari" onchange="renderSemua()">
+        <label>s/d:</label><input type="date" id="fSemuaSd" onchange="renderSemua()">
+        <button class="btn btn-soft btn-sm" onclick="resetFilter('semua')">↺ Ulang</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Nomor Surat</th><th>Tanggal</th><th>Pengirim/Tujuan</th><th>Jenis</th><th>Perihal</th><th>Isi/Keterangan</th><th>Dokumen</th><th>Aksi</th>
+            </tr></thead>
+            <tbody id="tbodySemua"></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="semuaCount">0 surat</span>
+          <div id="paginSemua" style="display:flex;gap:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAMBAH/EDIT SURAT -->
+    <div class="page" id="page-tambah">
+      <div class="section-header">
+        <div class="section-title"><span class="dot green"></span><span id="formTitle">Tambah Surat Baru</span></div>
+        <button class="btn btn-soft btn-sm" onclick="showPage('page-semua')">← Kembali</button>
+      </div>
+      <div style="background:var(--bg-card);border-radius:var(--radius);padding:26px 28px;box-shadow:var(--shadow);border:1.5px solid var(--border);">
+        <div class="form-grid">
+          <input type="hidden" id="formId">
+          <div class="form-group">
+            <label>Nomor Surat</label>
+            <input type="text" id="fNomorSurat" placeholder="Contoh: 001/BAAK/UMP/2025">
+          </div>
+          <div class="form-group">
+            <label>Tanggal</label>
+            <input type="date" id="fTanggal">
+          </div>
+          <div class="form-group">
+            <label>Pengirim / Tujuan</label>
+            <input type="text" id="fPengirim" placeholder="Nama pengirim atau tujuan">
+          </div>
+          <div class="form-group">
+            <label>Jenis</label>
+            <select id="fJenis">
+              <option value="masuk">Masuk</option>
+              <option value="keluar">Keluar</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Perihal</label>
+            <input type="text" id="fPerihal" placeholder="Perihal surat">
+          </div>
+          <div class="form-group full">
+            <label>Isi / Keterangan</label>
+            <textarea id="fKeterangan" placeholder="Isi atau keterangan singkat surat..."></textarea>
+          </div>
+          <div class="form-group full">
+            <label>Lampiran Dokumen (Gambar/PDF dari komputer)</label>
+            <div class="file-drop-area" onclick="document.getElementById('fLampiran').click()" id="dropArea">
+              <div class="drop-icon">🗃️</div>
+              <div id="dropLabel">Klik untuk pilih file gambar atau PDF dari komputer</div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;">Format: JPG, PNG, PDF</div>
+            </div>
+            <input type="file" id="fLampiran" accept="image/*,.pdf" onchange="handleFileSelect(event)">
+          </div>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="simpanSurat()">💾 Simpan Surat</button>
+          <button class="btn btn-soft" onclick="resetForm()">↺ Ulang</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT / SINKRON -->
+    <div class="page" id="page-import">
+      <div class="section-header">
+        <div class="section-title"><span class="dot green"></span>Impor & Sinkronisasi Data</div>
+      </div>
+      <div class="panel-grid">
+        <!-- Import Excel -->
+        <div class="panel-card">
+          <h3>📁 Impor dari File Excel</h3>
+          <p>Pilih dokumen Excel (.xlsx / .xls) dari komputer Anda. Kolom yang diperlukan: nomor, nomorSurat, tanggal, pengirim, jenis, perihal, keterangan, lampiranPath.</p>
+          <div class="file-drop-area" onclick="document.getElementById('importXlsx').click()" id="dropXlsx">
+            <div class="drop-icon">📊</div>
+            <div id="dropXlsxLabel">Klik untuk pilih dokumen Excel</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:4px;">.xlsx / .xls</div>
+          </div>
+          <input type="file" id="importXlsx" accept=".xlsx,.xls" onchange="importExcel(event)">
+          <div class="progress-bar-outer" id="importProgress" style="display:none"><div class="progress-bar-inner" id="importProgressBar" style="width:0%"></div></div>
+          <div class="sync-status" id="importStatus"></div>
+          <div style="margin-top:12px;">
+            <button class="btn btn-teal" onclick="downloadTemplate()">⬇ Unduh Sampel Excel</button>
+          </div>
+        </div>
+
+        <!-- Sinkron ke Excel -->
+        <div class="panel-card">
+          <h3>⬆ Ekspor ke Excel</h3>
+          <p>Ekspor seluruh data surat ke dokumen Excel (.xlsx) di komputer Anda. Dokumen akan otomatis terunduh.</p>
+          <div class="btn-group">
+            <button class="btn btn-warning" onclick="exportExcel()">📊 Ekspor ke dokumen Excel</button>
+            <button class="btn btn-soft" onclick="exportCSV()">📊 Ekspor ke dokumen CSV</button>
+          </div>
+          <div class="sync-status" id="exportStatus"></div>
+        </div>
+
+        <!-- Simpan & Muat ZIP -->
+        <div class="panel-card" style="grid-column:1/-1;border:2px solid var(--primary-light);background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%);">
+          <h3>🗜️ Simpan & Muat Dokumen ZIP</h3>
+          <p>Satu dokumen <b>.zip</b> berisi semua data surat (<code>data.json</code>) dan semua lampiran asli dalam folder (<code>lampiran/</code>).</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+            <div style="flex:1;min-width:220px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">⬇ Unduh ke dokumen ZIP</div>
+              <button class="btn btn-primary" onclick="simpanZIP()" style="width:100%;justify-content:center;">🗜️ Unduh arsip_surat.zip</button>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6;">Semua data surat & lampiran asli dikemas dalam satu dokumen ZIP terkompresi. Gunakan tombol <b>💾️ Simpan ZIP</b> di kanan atas untuk akses cepat.</div>
+            </div>
+            <div style="flex:1;min-width:220px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">⬆ Unggah dari dokumen ZIP</div>
+              <div class="file-drop-area" onclick="document.getElementById('loadZip').click()" id="dropZip" style="margin-bottom:6px;padding:14px;">
+                <div class="drop-icon" style="font-size:22px;margin-bottom:4px;">🗜️</div>
+                <div id="dropZipLabel">Klik untuk pilih dokumen ZIP</div>
+                <div style="font-size:11px;color:var(--text-light);margin-top:2px;">arsip_surat_[tanggal].zip</div>
+              </div>
+              <input type="file" id="loadZip" accept=".zip" onchange="muatZIP(event, false)">
+              <div class="sync-status" id="zipStatus"></div>
+            </div>
+          </div>
+          <div style="margin-top:14px;padding:10px 14px;background:var(--primary-light);border-radius:var(--radius-sm);font-size:12px;color:var(--primary-dark);line-height:1.7;">
+            💡 <b>Cara pakai :</b> Simpan ZIP di komputer A → kirim ZIP ke komputer B (via USB, E-mail, atau lainnya) → Unggah ZIP di komputer B. Data & lampiran langsung tersedia!
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+</div>
+
+<!-- MODAL DOKUMEN -->
+<div class="modal-overlay" id="modalDok">
+  <div class="modal" style="max-width:860px;">
+    <div class="modal-header">
+      <h2 id="modalDokTitle">Lampiran Surat</h2>
+      <button class="modal-close" onclick="closeModal('modalDok')">✕</button>
+    </div>
+    <div class="zoom-toolbar" id="zoomToolbar" style="display:none;">
+      <button class="zoom-btn" onclick="zoomOut()" title="Perkecil">🔍 −</button>
+      <span class="zoom-level" id="zoomLevel">100%</span>
+      <button class="zoom-btn" onclick="zoomIn()" title="Perbesar">🔍 ＋</button>
+      <button class="zoom-btn" onclick="zoomReset()" title="Reset zoom">↺ Ulang</button>
+      <button class="zoom-btn" onclick="zoomFit()" title="Sesuaikan layar">⊡ Fit</button>
+    </div>
+    <div class="modal-body" id="modalDokBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-soft" onclick="closeModal('modalDok')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL SURAT -->
+<div class="modal-overlay" id="modalDetail">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Detail Surat</h2>
+      <button class="modal-close" onclick="closeModal('modalDetail')">✕</button>
+    </div>
+    <div class="modal-body" id="modalDetailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-sm" id="btnEditDetail" onclick="">Edit</button>
+      <button class="btn btn-soft" onclick="closeModal('modalDetail')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL MUAT ZIP (tampil jika belum ada data) -->
+<div class="modal-overlay" id="modalMuatJSON" style="z-index:9999;background:rgba(30,40,60,0.7);">
+  <div class="modal" style="max-width:500px;text-align:center;">
+    <div style="font-size:52px;margin-bottom:10px;">🗜️</div>
+    <h2 style="font-size:18px;margin-bottom:8px;color:var(--primary-dark)">Dashboard Arsip Surat</h2>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7;">
+      Muat file <b>arsip_surat.zip</b> untuk melanjutkan sesi sebelumnya, atau mulai dengan data kosong.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="file-drop-area" onclick="document.getElementById('loadZipWelcome').click()" style="padding:18px;cursor:pointer;">
+        <div class="drop-icon" style="font-size:28px;margin-bottom:6px;">📦</div>
+        <div id="dropZipWelcomeLabel" style="font-weight:700;color:var(--primary-dark);">Muat File ZIP</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">arsip_surat_[tanggal].zip</div>
+      </div>
+      <input type="file" id="loadZipWelcome" accept=".zip" onchange="muatZIPWelcome(event)" style="display:none;">
+      <button class="btn btn-soft" onclick="mulaiKosong()" style="width:100%;justify-content:center;font-size:13px;">
+        Mulai dengan Data Kosong
+      </button>
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--text-muted);line-height:1.7;">
+      💡 Selalu klik <b>💾️ Simpan ZIP</b> setelah menambah/mengubah data agar tersimpan sebagai file.
+    </div>
+  </div>
+</div>
+
+<footer>
+  Andri Restandi &nbsp;•&nbsp; Biro Administrasi Akademik dan Kemahasiswaan (BAAK) &nbsp;•&nbsp; Universitas Muhammadiyah Pontianak
+</footer>
+
+<script>
+// ======================== DATA STORE ========================
+let suratData = [];
+let lampiranStore = {};
+let editingId = null;
+const PAGE_SIZE = 15;
+let pageMasuk = 1, pageKeluar = 1, pageSemua = 1;
+let _jsonDirty = false; // ada perubahan yang belum disimpan
+
+// ======================== INDEXEDDB (untuk lampiran besar) ========================
+let _idb = null;
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    if (_idb) return resolve(_idb);
+    const req = indexedDB.open('arsipSuratDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('lampiran');
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbSet(key, val) {
+  return openIDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('lampiran', 'readwrite');
+    tx.objectStore('lampiran').put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+function idbGet(key) {
+  return openIDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('lampiran', 'readonly');
+    const req = tx.objectStore('lampiran').get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  }));
+}
+function idbDelete(key) {
+  return openIDB().then(db => new Promise((res) => {
+    const tx = db.transaction('lampiran', 'readwrite');
+    tx.objectStore('lampiran').delete(key);
+    tx.oncomplete = () => res();
+  }));
+}
+function idbClear() {
+  return openIDB().then(db => new Promise((res) => {
+    const tx = db.transaction('lampiran', 'readwrite');
+    tx.objectStore('lampiran').clear();
+    tx.oncomplete = () => res();
+  }));
+}
+function idbGetAll() {
+  return openIDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('lampiran', 'readonly');
+    const store = tx.objectStore('lampiran');
+    const keys = [], vals = [];
+    store.openCursor().onsuccess = e => {
+      const cursor = e.target.result;
+      if (cursor) { keys.push(cursor.key); vals.push(cursor.value); cursor.continue(); }
+      else { const obj = {}; keys.forEach((k,i) => obj[k] = vals[i]); res(obj); }
+    };
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+
+function saveData() {
+  // Simpan suratData ke localStorage (kecil, aman)
+  try {
+    localStorage.setItem('suratArsipCache', JSON.stringify(suratData));
+  } catch(e) {}
+  // Simpan lampiranStore ke IndexedDB (bisa besar)
+  Object.entries(lampiranStore).forEach(([k, v]) => idbSet(k, v).catch(() => {}));
+  _jsonDirty = true;
+  updateSaveIndicator();
+}
+
+function updateSaveIndicator() {
+  const btn = document.getElementById('btnSaveJson');
+  const ind = document.getElementById('saveIndicator');
+  if (!btn) return;
+  if (_jsonDirty) {
+    btn.style.background = '#D97706';
+    btn.style.borderColor = '#B45309';
+    btn.title = 'Ada perubahan belum disimpan — klik untuk simpan ZIP';
+    if (ind) { ind.textContent = '⚠ Belum disimpan'; ind.style.color = '#B45309'; }
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.title = 'Simpan semua data ke file ZIP';
+    if (ind) { ind.textContent = '✓ Tersimpan'; ind.style.color = 'var(--secondary)'; }
+  }
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// Muat cache dari localStorage (suratData) + IndexedDB (lampiran)
+async function initFromCache() {
+  try {
+    const cached = localStorage.getItem('suratArsipCache');
+    if (cached) {
+      suratData = JSON.parse(cached);
+      lampiranStore = await idbGetAll();
+      _jsonDirty = false;
+    }
+  } catch(e) { suratData = []; lampiranStore = {}; }
+  // Tampilkan welcome modal jika tidak ada cache
+  if (suratData.length === 0) {
+    document.getElementById('modalMuatJSON').classList.add('open');
+  } else {
+    document.getElementById('modalMuatJSON').style.display = 'none';
+    _jsonDirty = false;
+  }
+  updateSaveIndicator();
+  updateStats();
+  renderDashboard();
+}
+initFromCache();
+
+
+// ======================== NAVIGATION ========================
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  updateStats();
+  if (id === 'page-dashboard') renderDashboard();
+  if (id === 'page-filter-masuk') renderFilterMasuk();
+  if (id === 'page-filter-keluar') renderFilterKeluar();
+  if (id === 'page-semua') renderSemua();
+  if (id === 'page-tambah') { if (!editingId) resetForm(); }
+}
+
+// ======================== DATE ========================
+(function() {
+  const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const now = new Date();
+  document.getElementById('headerDate').textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+})();
+
+// ======================== STATS ========================
+function updateStats() {
+  const masuk = suratData.filter(s => s.jenis === 'masuk').length;
+  const keluar = suratData.filter(s => s.jenis === 'keluar').length;
+  const total = suratData.length;
+  const now = new Date();
+  const bulanIni = suratData.filter(s => {
+    if (!s.tanggal) return false;
+    const d = new Date(s.tanggal);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  document.getElementById('statMasuk').textContent = masuk;
+  document.getElementById('statKeluar').textContent = keluar;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statBulanIni').textContent = bulanIni;
+  document.getElementById('totalBadge').textContent = total + ' Surat';
+}
+
+// ======================== DASHBOARD ========================
+function renderDashboard() {
+  // Rekap per bulan
+  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const now = new Date();
+  function rekapBulan(jenis) {
+    const map = {};
+    suratData.filter(s => s.jenis === jenis).forEach(s => {
+      if (!s.tanggal) return;
+      const d = new Date(s.tanggal);
+      const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      map[key] = (map[key] || 0) + 1;
+    });
+    return Object.entries(map).sort((a,b) => b[0].localeCompare(a[0])).slice(0,6);
+  }
+  function renderRekapRows(entries, el) {
+    if (!entries.length) { document.getElementById(el).innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Belum ada data</div>'; return; }
+    const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+    document.getElementById(el).innerHTML = entries.map(([k,v]) => {
+      const [y,m] = k.split('-');
+      return `<div class="rekap-row"><span>${months[+m-1]} ${y}</span><span class="rekap-val">${v} surat</span></div>`;
+    }).join('');
+  }
+  renderRekapRows(rekapBulan('masuk'), 'rekapMasukBulan');
+  renderRekapRows(rekapBulan('keluar'), 'rekapKeluarBulan');
+
+  // Surat terbaru
+  const recent = [...suratData].sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||'')).slice(0,8);
+  const tbody = document.getElementById('tbodyDashboard');
+  if (!recent.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div>Belum ada surat</div></td></tr>`; return; }
+  tbody.innerHTML = recent.map((s,i) => `
+    <tr>
+      <td><b>${s.nomorSurat||'-'}</b></td>
+      <td>${formatTgl(s.tanggal)}</td>
+      <td>${s.pengirim||'-'}</td>
+      <td><span class="badge badge-${s.jenis}">${s.jenis==='masuk'?'📥 Masuk':'📤 Keluar'}</span></td>
+      <td>${s.perihal||'-'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-soft btn-sm" onclick="lihatDetail('${s.id}')">📬 Detail</button>
+        ${s.lampiranNama ? `<button class="btn btn-teal btn-sm" onclick="lihatDokumen('${s.id}')">🗃️ Dok</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+// ======================== REKAP MASUK ========================
+function renderRekapMasuk() {
+  const data = suratData.filter(s => s.jenis === 'masuk');
+  document.getElementById('rekapMasukCount').textContent = data.length + ' surat masuk';
+  const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const map = {};
+  data.forEach(s => {
+    if (!s.tanggal) return;
+    const d = new Date(s.tanggal);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    map[key] = (map[key] || 0) + 1;
+  });
+  const entries = Object.entries(map).sort((a,b) => b[0].localeCompare(a[0]));
+  const el = document.getElementById('rekapMasukDetail');
+  el.innerHTML = entries.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;">${entries.map(([k,v])=>{const[y,m]=k.split('-');return`<div style="background:var(--accent-in-light);border-radius:8px;padding:10px 18px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);font-weight:600">${months[+m-1]} ${y}</div><div style="font-size:22px;font-weight:800;color:var(--primary-dark)">${v}</div></div>`}).join('')}</div>` : '<div style="color:var(--text-muted);font-size:13px">Belum ada data</div>';
+  const tbody = document.getElementById('tbodyRekapMasuk');
+  tbody.innerHTML = data.map((s,i) => `<tr><td><b>${s.nomorSurat||'-'}</b></td><td>${formatTgl(s.tanggal)}</td><td>${s.pengirim||'-'}</td><td>${s.perihal||'-'}</td><td>${s.keterangan||'-'}</td><td>${s.lampiranNama?`<button class="btn btn-teal btn-sm" onclick="lihatDokumen('${s.id}')">🗃️</button>`:'<span class="no-attachment">—</span>'}</td></tr>`).join('') || '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div>Tidak ada surat masuk</div></td></tr>';
+}
+
+// ======================== REKAP KELUAR ========================
+function renderRekapKeluar() {
+  const data = suratData.filter(s => s.jenis === 'keluar');
+  document.getElementById('rekapKeluarCount').textContent = data.length + ' surat keluar';
+  const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const map = {};
+  data.forEach(s => {
+    if (!s.tanggal) return;
+    const d = new Date(s.tanggal);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    map[key] = (map[key] || 0) + 1;
+  });
+  const entries = Object.entries(map).sort((a,b) => b[0].localeCompare(a[0]));
+  const el = document.getElementById('rekapKeluarDetail');
+  el.innerHTML = entries.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;">${entries.map(([k,v])=>{const[y,m]=k.split('-');return`<div style="background:var(--accent-out-light);border-radius:8px;padding:10px 18px;text-align:center;"><div style="font-size:11px;color:var(--text-muted);font-weight:600">${months[+m-1]} ${y}</div><div style="font-size:22px;font-weight:800;color:#B45309">${v}</div></div>`}).join('')}</div>` : '<div style="color:var(--text-muted);font-size:13px">Belum ada data</div>';
+  const tbody = document.getElementById('tbodyRekapKeluar');
+  tbody.innerHTML = data.map((s,i) => `<tr><td><b>${s.nomorSurat||'-'}</b></td><td>${formatTgl(s.tanggal)}</td><td>${s.pengirim||'-'}</td><td>${s.perihal||'-'}</td><td>${s.keterangan||'-'}</td><td>${s.lampiranNama?`<button class="btn btn-teal btn-sm" onclick="lihatDokumen('${s.id}')">🗃️</button>`:'<span class="no-attachment">—</span>'}</td></tr>`).join('') || '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div>Tidak ada surat keluar</div></td></tr>';
+}
+
+// ======================== FILTER ========================
+function getFiltered(jenis, q, dari, sd) {
+  return suratData.filter(s => {
+    if (s.jenis !== jenis) return false;
+    if (q) {
+      const lower = q.toLowerCase();
+      if (!(s.nomorSurat||'').toLowerCase().includes(lower) &&
+          !(s.pengirim||'').toLowerCase().includes(lower) &&
+          !(s.perihal||'').toLowerCase().includes(lower) &&
+          !(s.keterangan||'').toLowerCase().includes(lower)) return false;
+    }
+    if (dari && s.tanggal < dari) return false;
+    if (sd && s.tanggal > sd) return false;
+    return true;
+  }).sort((a, b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+}
+
+function renderFilterMasuk() {
+  const q = document.getElementById('fMasukQ').value;
+  const dari = document.getElementById('fMasukDari').value;
+  const sd = document.getElementById('fMasukSd').value;
+  const data = getFiltered('masuk', q, dari, sd);
+  document.getElementById('filterMasukCount').textContent = data.length + ' surat ditemukan';
+  renderTablePage(data, 'tbodyFilterMasuk', pageMasuk, 'masuk', 'paginMasuk');
+}
+
+function renderFilterKeluar() {
+  const q = document.getElementById('fKeluarQ').value;
+  const dari = document.getElementById('fKeluarDari').value;
+  const sd = document.getElementById('fKeluarSd').value;
+  const data = getFiltered('keluar', q, dari, sd);
+  document.getElementById('filterKeluarCount').textContent = data.length + ' surat ditemukan';
+  renderTablePage(data, 'tbodyFilterKeluar', pageKeluar, 'keluar', 'paginKeluar');
+}
+
+function renderSemua() {
+  const q = document.getElementById('fSemuaQ').value;
+  const jenis = document.getElementById('fSemuaJenis').value;
+  const dari = document.getElementById('fSemuaDari').value;
+  const sd = document.getElementById('fSemuaSd').value;
+  let data = [...suratData];
+  if (q) { const l = q.toLowerCase(); data = data.filter(s => (s.nomorSurat||'').toLowerCase().includes(l) || (s.pengirim||'').toLowerCase().includes(l) || (s.perihal||'').toLowerCase().includes(l)); }
+  if (jenis) data = data.filter(s => s.jenis === jenis);
+  if (dari) data = data.filter(s => s.tanggal >= dari);
+  if (sd) data = data.filter(s => s.tanggal <= sd);
+  data.sort((a, b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+  document.getElementById('semuaCount').textContent = data.length + ' surat';
+  renderTablePageSemua(data, 'tbodySemua', pageSemua, 'paginSemua');
+}
+
+function renderTablePage(data, tbodyId, page, jenis, paginId) {
+  const start = (page-1)*PAGE_SIZE, end = start+PAGE_SIZE;
+  const paged = data.slice(start, end);
+  const isPengirim = jenis === 'masuk';
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = paged.map((s,i) => `<tr>
+    <td><b>${s.nomorSurat||'-'}</b></td><td>${formatTgl(s.tanggal)}</td>
+    <td>${s.pengirim||'-'}</td><td>${s.perihal||'-'}</td><td>${s.keterangan||'-'}</td>
+    <td>${s.lampiranNama?`<button class="btn btn-teal btn-sm" onclick="lihatDokumen('${s.id}')">🗃️</button>`:'<span class="no-attachment">—</span>'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-soft btn-sm" onclick="lihatDetail('${s.id}')">📬</button> <button class="btn btn-soft btn-sm" onclick="editSurat('${s.id}')">✏️</button> <button class="btn btn-danger btn-sm" onclick="hapusSurat('${s.id}')">✂️</button></td>
+  </tr>`).join('') || `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div>Tidak ada surat ditemukan</div></td></tr>`;
+  renderPaging(Math.ceil(data.length/PAGE_SIZE), page, paginId, jenis);
+}
+
+function renderTablePageSemua(data, tbodyId, page, paginId) {
+  const start = (page-1)*PAGE_SIZE, end = start+PAGE_SIZE;
+  const paged = data.slice(start, end);
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = paged.map((s,i) => `<tr>
+    <td><b>${s.nomorSurat||'-'}</b></td><td>${formatTgl(s.tanggal)}</td>
+    <td>${s.pengirim||'-'}</td><td><span class="badge badge-${s.jenis}">${s.jenis==='masuk'?'📥 Masuk':'📤 Keluar'}</span></td>
+    <td>${s.perihal||'-'}</td><td>${s.keterangan||'-'}</td>
+    <td>${s.lampiranNama?`<button class="btn btn-teal btn-sm" onclick="lihatDokumen('${s.id}')">🗃️</button>`:'<span class="no-attachment">—</span>'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-soft btn-sm" onclick="lihatDetail('${s.id}')">📬</button> <button class="btn btn-soft btn-sm" onclick="editSurat('${s.id}')">✏️</button> <button class="btn btn-danger btn-sm" onclick="hapusSurat('${s.id}')">✂️</button></td>
+  </tr>`).join('') || `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📭</div>Tidak ada surat</div></td></tr>`;
+  renderPaging(Math.ceil(data.length/PAGE_SIZE), page, paginId, 'semua');
+}
+
+function renderPaging(total, current, paginId, ctx) {
+  const el = document.getElementById(paginId);
+  el.innerHTML = '';
+  for (let i=1;i<=total;i++) {
+    const btn = document.createElement('button');
+    btn.className = 'paging-btn' + (i===current?' active':'');
+    btn.textContent = i;
+    btn.onclick = () => { if(ctx==='masuk') pageMasuk=i; else if(ctx==='keluar') pageKeluar=i; else pageSemua=i; if(ctx==='masuk') renderFilterMasuk(); else if(ctx==='keluar') renderFilterKeluar(); else renderSemua(); };
+    el.appendChild(btn);
+  }
+}
+
+function resetFilter(ctx) {
+  if (ctx==='masuk') { document.getElementById('fMasukQ').value=''; document.getElementById('fMasukDari').value=''; document.getElementById('fMasukSd').value=''; pageMasuk=1; renderFilterMasuk(); }
+  if (ctx==='keluar') { document.getElementById('fKeluarQ').value=''; document.getElementById('fKeluarDari').value=''; document.getElementById('fKeluarSd').value=''; pageKeluar=1; renderFilterKeluar(); }
+  if (ctx==='semua') { document.getElementById('fSemuaQ').value=''; document.getElementById('fSemuaJenis').value=''; document.getElementById('fSemuaDari').value=''; document.getElementById('fSemuaSd').value=''; pageSemua=1; renderSemua(); }
+}
+
+// ======================== FORM TAMBAH/EDIT ========================
+function resetForm() {
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Tambah Surat Baru';
+  ['formId','fNomorSurat','fTanggal','fPengirim','fPerihal','fKeterangan'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fJenis').value = 'masuk';
+  document.getElementById('fLampiran').value = '';
+  document.getElementById('dropLabel').textContent = 'Klik untuk pilih dokumen Gambar atau PDF dari komputer';
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('dropLabel').textContent = '✅ ' + file.name;
+}
+
+function simpanSurat() {
+  const nomorSurat = document.getElementById('fNomorSurat').value.trim();
+  if (!nomorSurat) { toast('Nomor surat wajib diisi!', 'error'); return; }
+  const lampiranFile = document.getElementById('fLampiran').files[0];
+  const surat = {
+    id: editingId || genId(),
+    nomorSurat,
+    tanggal: document.getElementById('fTanggal').value,
+    pengirim: document.getElementById('fPengirim').value.trim(),
+    jenis: document.getElementById('fJenis').value,
+    perihal: document.getElementById('fPerihal').value.trim(),
+    keterangan: document.getElementById('fKeterangan').value.trim(),
+    lampiranNama: lampiranFile ? lampiranFile.name : (editingId ? (suratData.find(s=>s.id===editingId)||{}).lampiranNama || '' : ''),
+  };
+
+  if (lampiranFile) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const lampiranObj = { nama: lampiranFile.name, type: lampiranFile.type, data: ev.target.result };
+      lampiranStore[surat.id] = lampiranObj;
+      // Simpan langsung ke IndexedDB agar persisten setelah refresh
+      idbSet(surat.id, lampiranObj).catch(()=>{});
+      finalizeSimpan(surat);
+    };
+    reader.readAsDataURL(lampiranFile);
+  } else {
+    finalizeSimpan(surat);
+  }
+}
+
+function finalizeSimpan(surat) {
+  if (editingId) {
+    const idx = suratData.findIndex(s => s.id === editingId);
+    if (idx >= 0) suratData[idx] = surat;
+  } else {
+    suratData.push(surat);
+  }
+  saveData(); updateStats(); resetForm();
+  toast(editingId ? '✅ Surat berhasil diperbarui!' : '✅ Surat berhasil ditambahkan!', 'success');
+  showPage('page-semua'); renderSemua();
+}
+
+function editSurat(id) {
+  const s = suratData.find(s => s.id === id);
+  if (!s) return;
+  editingId = id;
+  document.getElementById('formTitle').textContent = 'Edit Surat';
+  document.getElementById('formId').value = s.id;
+  document.getElementById('fNomorSurat').value = s.nomorSurat || '';
+  document.getElementById('fTanggal').value = s.tanggal || '';
+  document.getElementById('fPengirim').value = s.pengirim || '';
+  document.getElementById('fJenis').value = s.jenis || 'masuk';
+  document.getElementById('fPerihal').value = s.perihal || '';
+  document.getElementById('fKeterangan').value = s.keterangan || '';
+  document.getElementById('dropLabel').textContent = s.lampiranNama ? '🗃️ ' + s.lampiranNama : 'Klik untuk ganti lampiran';
+  showPage('page-tambah');
+}
+
+function hapusSurat(id) {
+  if (!confirm('Hapus surat ini?')) return;
+  suratData = suratData.filter(s => s.id !== id);
+  delete lampiranStore[id];
+  idbDelete(id).catch(()=>{});
+  saveData(); updateStats(); renderSemua();
+  toast('✂️ Surat dihapus.', 'error');
+}
+
+function hapusSemua() {
+  if (!confirm('Hapus SEMUA data surat? Tindakan ini tidak dapat dibatalkan!')) return;
+  suratData = []; lampiranStore = {};
+  try { localStorage.removeItem('suratArsipCache'); } catch(e) {}
+  idbClear().catch(()=>{});
+  _jsonDirty = false;
+  updateSaveIndicator();
+  updateStats(); renderDashboard();
+  toast('✂️ Semua data dihapus.', 'error');
+}
+
+// ======================== DETAIL ========================
+function lihatDetail(id) {
+  const s = suratData.find(s => s.id === id);
+  if (!s) return;
+  const fields = [
+    ['Nomor Surat', `<b>${s.nomorSurat}</b>`, false],
+    ['Tanggal', formatTgl(s.tanggal), false],
+    ['Pengirim/Tujuan', s.pengirim, false],
+    ['Jenis', `<span class="badge badge-${s.jenis}">${s.jenis==='masuk'?'📥 Masuk':'📤 Keluar'}</span>`, false],
+    ['Perihal', s.perihal, false],
+    ['Isi/Keterangan', s.keterangan, true],
+    ['Lampiran', s.lampiranNama||'—', false],
+  ];
+  document.getElementById('modalDetailBody').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+      ${fields.map(([k,v,wrap])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 12px;font-weight:600;color:var(--text-muted);width:35%;vertical-align:top;">${k}</td><td style="padding:9px 12px;${wrap?'word-break:break-word;white-space:pre-wrap;line-height:1.6;':''}">${v||'—'}</td></tr>`).join('')}
+    </table>
+    ${s.lampiranNama ? `<div style="margin-top:14px"><button class="btn btn-teal" onclick="lihatDokumen('${s.id}');closeModal('modalDetail')">🗃️ Lihat Lampiran</button></div>` : ''}
+  `;
+  document.getElementById('btnEditDetail').onclick = () => { closeModal('modalDetail'); editSurat(id); };
+  document.getElementById('modalDetail').classList.add('open');
+}
+
+// ======================== DOKUMEN ========================
+let currentZoom = 1;
+const ZOOM_STEP = 0.2;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 4;
+let zoomTarget = null; // 'image' or 'pdf'
+
+function applyZoom() {
+  const pct = Math.round(currentZoom * 100);
+  document.getElementById('zoomLevel').textContent = pct + '%';
+  if (zoomTarget === 'image') {
+    const img = document.getElementById('zoomableImg');
+    if (img) img.style.transform = `scale(${currentZoom})`;
+  } else if (zoomTarget === 'pdf') {
+    const frame = document.getElementById('zoomablePdf');
+    if (frame) {
+      const w = Math.round(currentZoom * 100);
+      frame.style.width = w + '%';
+      frame.style.height = Math.max(480, Math.round(currentZoom * 480)) + 'px';
+    }
+  }
+}
+
+function zoomIn() { currentZoom = Math.min(ZOOM_MAX, +(currentZoom + ZOOM_STEP).toFixed(2)); applyZoom(); }
+function zoomOut() { currentZoom = Math.max(ZOOM_MIN, +(currentZoom - ZOOM_STEP).toFixed(2)); applyZoom(); }
+function zoomReset() { currentZoom = 1; applyZoom(); }
+function zoomFit() {
+  if (zoomTarget === 'image') { currentZoom = 1; applyZoom(); }
+  else if (zoomTarget === 'pdf') { currentZoom = 1; applyZoom(); }
+}
+
+function showZoomToolbar(type) {
+  zoomTarget = type;
+  currentZoom = 1;
+  document.getElementById('zoomToolbar').style.display = 'flex';
+  document.getElementById('zoomLevel').textContent = '100%';
+}
+
+function lihatDokumen(id) {
+  const s = suratData.find(s => s.id === id);
+  const lamp = lampiranStore[id];
+  document.getElementById('modalDokTitle').textContent = 'Lampiran: ' + (s ? s.nomorSurat : '');
+  const body = document.getElementById('modalDokBody');
+  document.getElementById('zoomToolbar').style.display = 'none';
+  currentZoom = 1;
+  zoomTarget = null;
+
+  if (lamp && lamp.data) {
+    if (lamp.type && lamp.type.startsWith('image/')) {
+      body.innerHTML = `<div class="zoom-img-wrap"><img id="zoomableImg" src="${lamp.data}" alt="Lampiran" style="max-width:100%;transform-origin:top center;"></div>`;
+      showZoomToolbar('image');
+    } else if (lamp.type === 'application/pdf') {
+      body.innerHTML = `<div class="zoom-pdf-wrap" id="pdfWrap"><iframe id="zoomablePdf" src="${lamp.data}" width="100%" height="480px" style="border:none;transform-origin:top left;display:block;"></iframe></div>`;
+      showZoomToolbar('pdf');
+    } else {
+      body.innerHTML = `<div class="doc-preview"><div class="preview-icon">📬</div><p>File: ${lamp.nama}</p></div>`;
+    }
+  } else if (s && s.lampiranPath) {
+    const ext = (s.lampiranPath.split('.').pop()||'').toLowerCase();
+    if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
+      body.innerHTML = `<div class="doc-preview"><p style="margin-bottom:10px;font-size:12px;color:var(--text-muted)">Path: <code>${s.lampiranPath}</code></p><div class="zoom-img-wrap"><img id="zoomableImg" src="${s.lampiranPath}" onerror="this.closest('.zoom-img-wrap').outerHTML='<div class=\\'preview-icon\\'>🖼️</div><p>Gambar tidak dapat dimuat dari path lokal.</p>'" style="max-width:100%;transform-origin:top center;display:block;margin:0 auto;"></div><small style="color:var(--text-muted)">Catatan: File lokal mungkin memerlukan izin browser khusus</small></div>`;
+      showZoomToolbar('image');
+    } else if (ext === 'pdf') {
+      body.innerHTML = `<div class="doc-preview"><p style="margin-bottom:10px;font-size:12px;color:var(--text-muted)">Path: <code>${s.lampiranPath}</code></p><div class="zoom-pdf-wrap" id="pdfWrap"><iframe id="zoomablePdf" src="${s.lampiranPath}" width="100%" height="480px" style="border:none;transform-origin:top left;display:block;"></iframe></div></div>`;
+      showZoomToolbar('pdf');
+    } else {
+      body.innerHTML = `<div class="doc-preview"><div class="preview-icon">📁</div><p>Path: <code>${s.lampiranPath}</code></p><p style="margin-top:8px;font-size:12px;color:var(--text-muted)">Buka file secara manual di komputer Anda</p></div>`;
+    }
+  } else {
+    body.innerHTML = `<div class="doc-preview"><div class="preview-icon">📭</div><p>Tidak ada lampiran tersimpan untuk surat ini.</p><p style="font-size:12px;color:var(--text-muted);margin-top:6px">Edit surat dan upload lampiran dari komputer.</p></div>`;
+  }
+  document.getElementById('modalDok').classList.add('open');
+}
+
+// Mouse wheel zoom for image
+document.addEventListener('wheel', function(e) {
+  const wrap = document.querySelector('.zoom-img-wrap');
+  if (wrap && wrap.contains(e.target) && zoomTarget === 'image') {
+    e.preventDefault();
+    if (e.deltaY < 0) zoomIn(); else zoomOut();
+  }
+}, { passive: false });
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); }));
+
+// ======================== IMPORT EXCEL ========================
+function importExcel(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('dropXlsxLabel').textContent = '⏳ Membaca file...';
+  document.getElementById('importProgress').style.display = 'block';
+  document.getElementById('importProgressBar').style.width = '30%';
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      document.getElementById('importProgressBar').style.width = '60%';
+      const wb = XLSX.read(ev.target.result, {type: 'binary', cellDates: true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      let added = 0, updated = 0;
+      rows.forEach(row => {
+        const nomorSurat = (row.nomorSurat || row['Nomor Surat'] || row.nomor_surat || '').toString().trim();
+        if (!nomorSurat) return;
+        const existing = suratData.find(s => s.nomorSurat === nomorSurat);
+        const tgl = row.tanggal || row.Tanggal || '';
+        let tglStr = '';
+        if (tgl instanceof Date) tglStr = tgl.toISOString().slice(0,10);
+        else if (typeof tgl === 'number') { const d = new Date(Math.round((tgl - 25569)*86400*1000)); tglStr = d.toISOString().slice(0,10); }
+        else tglStr = (tgl+'').slice(0,10);
+        const obj = {
+          id: existing ? existing.id : genId(),
+          nomorSurat,
+          tanggal: tglStr,
+          pengirim: (row.pengirim || row.Pengirim || row['Pengirim/Tujuan'] || '').toString(),
+          jenis: ((row.jenis || row.Jenis || 'masuk').toString().toLowerCase().includes('keluar') ? 'keluar' : 'masuk'),
+          perihal: (row.perihal || row.Perihal || '').toString(),
+          keterangan: (row.keterangan || row.Keterangan || row['Isi/Keterangan'] || '').toString(),
+          lampiranNama: (row.lampiranNama || row['Lampiran'] || '').toString(),
+          lampiranPath: (row.lampiranPath || row['Path Lampiran'] || '').toString(),
+        };
+        if (existing) { Object.assign(existing, obj); updated++; }
+        else { suratData.push(obj); added++; }
+      });
+      document.getElementById('importProgressBar').style.width = '100%';
+      saveData(); updateStats(); renderDashboard();
+      document.getElementById('importStatus').textContent = `✅ Berhasil: ${added} ditambahkan, ${updated} diperbarui.`;
+      document.getElementById('dropXlsxLabel').textContent = '✅ ' + file.name;
+      toast(`Import Excel selesai: +${added} baru, ${updated} update`, 'success');
+    } catch(err) {
+      document.getElementById('importStatus').textContent = '❌ Gagal membaca file: ' + err.message;
+      toast('Gagal import Excel!', 'error');
+    }
+    setTimeout(()=>{ document.getElementById('importProgress').style.display='none'; document.getElementById('importProgressBar').style.width='0%'; }, 1500);
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = '';
+}
+
+// ======================== IMPORT GOOGLE SHEET ========================
+// ======================== SYNC FROM EXCEL ========================
+function syncExcel(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('dropSyncLabel').textContent = '⏳ Sinkronisasi...';
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'binary', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      let updated = 0, added = 0;
+      rows.forEach(row => {
+        const nomorSurat = (row.nomorSurat || row['Nomor Surat'] || '').toString().trim();
+        if (!nomorSurat) return;
+        const existing = suratData.find(s => s.nomorSurat === nomorSurat);
+        const tgl = row.tanggal || row.Tanggal || '';
+        let tglStr = '';
+        if (tgl instanceof Date) tglStr = tgl.toISOString().slice(0,10);
+        else if (typeof tgl === 'number') { const d = new Date(Math.round((tgl-25569)*86400*1000)); tglStr = d.toISOString().slice(0,10); }
+        else tglStr = (tgl+'').slice(0,10);
+        const obj = {
+          id: existing ? existing.id : genId(),
+          nomorSurat,
+          tanggal: tglStr,
+          pengirim: (row.pengirim||row.Pengirim||'').toString(),
+          jenis: ((row.jenis||row.Jenis||'masuk').toString().toLowerCase().includes('keluar')?'keluar':'masuk'),
+          perihal: (row.perihal||row.Perihal||'').toString(),
+          keterangan: (row.keterangan||row.Keterangan||'').toString(),
+          lampiranNama: (row.lampiranNama||'').toString(),
+          lampiranPath: (row.lampiranPath||row['Path Lampiran']||'').toString(),
+        };
+        if (existing) { Object.assign(existing, obj); updated++; }
+        else { suratData.push(obj); added++; }
+      });
+      saveData(); updateStats();
+      document.getElementById('syncStatus').textContent = `✅ Sinkron selesai: ${added} baru, ${updated} diperbarui.`;
+      document.getElementById('dropSyncLabel').textContent = '✅ ' + file.name;
+      toast(`Sinkronisasi selesai!`, 'success');
+    } catch(err) {
+      document.getElementById('syncStatus').textContent = '❌ Error: ' + err.message;
+    }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = '';
+}
+
+// ======================== JSON DATABASE ========================
+// ======================== ZIP DATABASE ========================
+async function simpanZIP() {
+  const btn = document.getElementById('btnSaveJson');
+  if (btn) { btn.textContent = '⏳ Mengemas...'; btn.disabled = true; }
+  try {
+    const zip = new JSZip();
+    // data.json — hanya teks, tanpa base64 lampiran
+    const dataBersih = suratData.map(s => ({...s}));
+    const payload = {
+      versi: '2.0',
+      exportedAt: new Date().toISOString(),
+      suratData: dataBersih,
+    };
+    zip.file('data.json', JSON.stringify(payload, null, 2));
+    // Lampiran asli di folder lampiran/
+    const lampiranFolder = zip.folder('lampiran');
+    for (const [id, lamp] of Object.entries(lampiranStore)) {
+      if (!lamp || !lamp.data) continue;
+      // Konversi base64 dataURL → binary
+      const base64 = lamp.data.split(',')[1];
+      const ext = (lamp.nama || 'file').split('.').pop();
+      const namaFile = `${id}.${ext}`;
+      lampiranFolder.file(namaFile, base64, {base64: true});
+    }
+    const content = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    }, (meta) => {
+      if (btn) btn.textContent = `⏳ ${Math.round(meta.percent)}%`;
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    const tgl = new Date().toISOString().slice(0, 10);
+    a.download = `arsip_surat_${tgl}.zip`;
+    a.click();
+    _jsonDirty = false;
+    updateSaveIndicator();
+    toast('💾 File ZIP berhasil disimpan!', 'success');
+  } catch(err) {
+    toast('❌ Gagal membuat ZIP: ' + err.message, 'error');
+  }
+  if (btn) { btn.textContent = '💾️ Simpan ZIP'; btn.disabled = false; }
+}
+
+async function muatZIP(e, isWelcome) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const labelId = isWelcome ? 'dropZipWelcomeLabel' : 'dropZipLabel';
+  const statusId = isWelcome ? null : 'zipStatus';
+  document.getElementById(labelId).textContent = '⏳ Mengekstrak...';
+  try {
+    const zip = await JSZip.loadAsync(file);
+    // Baca data.json
+    const dataFile = zip.file('data.json');
+    if (!dataFile) throw new Error('File data.json tidak ditemukan di dalam ZIP.');
+    const jsonText = await dataFile.async('string');
+    const payload = JSON.parse(jsonText);
+    if (!payload.suratData || !Array.isArray(payload.suratData)) throw new Error('Format data.json tidak valid.');
+    if (!isWelcome && suratData.length > 0) {
+      const ok = confirm(`Data saat ini (${suratData.length} surat) akan diganti dengan data dari ZIP (${payload.suratData.length} surat). Lanjutkan?`);
+      if (!ok) { document.getElementById(labelId).textContent = 'Klik untuk pilih file .zip'; e.target.value = ''; return; }
+    }
+    suratData = payload.suratData;
+    // Baca folder lampiran/
+    lampiranStore = {};
+    await idbClear();
+    const lampiranFiles = [];
+    zip.folder('lampiran').forEach((relPath, zipEntry) => {
+      if (!zipEntry.dir) lampiranFiles.push({relPath, zipEntry});
+    });
+    for (const {relPath, zipEntry} of lampiranFiles) {
+      const namaFile = relPath.split('/').pop();
+      const idSurat = namaFile.substring(0, namaFile.lastIndexOf('.'));
+      const ext = namaFile.split('.').pop().toLowerCase();
+      const mimeMap = {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',pdf:'application/pdf'};
+      const mimeType = mimeMap[ext] || 'application/octet-stream';
+      const base64 = await zipEntry.async('base64');
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      // Cari nama asli dari suratData
+      const surat = suratData.find(s => s.id === idSurat);
+      const namaAsli = surat ? (surat.lampiranNama || namaFile) : namaFile;
+      const lampObj = { nama: namaAsli, type: mimeType, data: dataUrl };
+      lampiranStore[idSurat] = lampObj;
+      await idbSet(idSurat, lampObj).catch(() => {});
+    }
+    // Cache suratData
+    try { localStorage.setItem('suratArsipCache', JSON.stringify(suratData)); } catch(err2) {}
+    _jsonDirty = false;
+    updateSaveIndicator();
+    updateStats(); renderDashboard();
+    const jml = lampiranFiles.length;
+    document.getElementById(labelId).textContent = '✅ ' + file.name;
+    if (statusId) document.getElementById(statusId).textContent = `✅ Berhasil memuat ${suratData.length} surat, ${jml} lampiran.`;
+    if (isWelcome) {
+      document.getElementById('modalMuatJSON').classList.remove('open');
+      document.getElementById('modalMuatJSON').style.display = 'none';
+    } else {
+      showPage('page-dashboard');
+    }
+    toast(`✅ ZIP dimuat: ${suratData.length} surat, ${jml} lampiran`, 'success');
+  } catch(err) {
+    document.getElementById(labelId).textContent = '❌ Gagal: ' + err.message;
+    if (statusId) document.getElementById(statusId).textContent = '❌ Gagal: ' + err.message;
+    toast('❌ Gagal memuat ZIP: ' + err.message, 'error');
+  }
+  e.target.value = '';
+}
+
+// ======================== EXPORT ========================
+function exportExcel() {
+  const ws_data = [
+    ['nomorSurat','tanggal','pengirim','jenis','perihal','keterangan','lampiranNama','lampiranPath'],
+    ...suratData.map(s => [s.nomorSurat,s.tanggal,s.pengirim,s.jenis,s.perihal,s.keterangan,s.lampiranNama||'',s.lampiranPath||''])
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols'] = [24,14,28,10,32,36,24,36].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Arsip Surat');
+  XLSX.writeFile(wb, 'arsip_surat_BAAK_UMP.xlsx');
+  document.getElementById('exportStatus').textContent = '✅ File Excel berhasil diunduh!';
+  toast('✅ Export Excel berhasil!', 'success');
+}
+
+function exportCSV() {
+  const rows = [['nomorSurat','tanggal','pengirim','jenis','perihal','keterangan','lampiranNama','lampiranPath'],...suratData.map(s=>[s.nomorSurat,s.tanggal,s.pengirim,s.jenis,s.perihal,s.keterangan,s.lampiranNama||'',s.lampiranPath||''])];
+  const csv = rows.map(r => r.map(c=>`"${(c||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'arsip_surat.csv'; a.click();
+  toast('✅ Export CSV berhasil!', 'success');
+}
+
+function downloadTemplate() {
+  const ws_data = [['nomorSurat','tanggal','pengirim','jenis','perihal','keterangan','lampiranNama','lampiranPath'],
+    ['001/BAAK/UMP/2025','2025-01-15','Kementerian Pendidikan','masuk','Undangan Rapat','Rapat koordinasi nasional','surat001.pdf','C:/Dokumen/surat001.pdf'],
+    ['002/BAAK/UMP/2025','2025-01-20','Rektor UMP','keluar','Surat Keterangan Mahasiswa','Keterangan aktif kuliah','surat002.pdf','C:/Dokumen/surat002.pdf'],
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols'] = [24,14,28,10,32,36,24,36].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.writeFile(wb, 'template_arsip_surat.xlsx');
+  toast('✅ Template Excel diunduh!', 'success');
+}
+
+// ======================== HELPER ========================
+function formatTgl(tgl) {
+  if (!tgl) return '—';
+  const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const d = new Date(tgl + 'T00:00:00');
+  if (isNaN(d)) return tgl;
+  return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ======================== INIT ========================
+function mulaiKosong() {
+  document.getElementById('modalMuatJSON').classList.remove('open');
+  document.getElementById('modalMuatJSON').style.display = 'none';
+  _jsonDirty = false;
+  updateSaveIndicator();
+  updateStats(); renderDashboard();
+}
+
+function muatZIPWelcome(e) {
+  muatZIP(e, true);
+}
+
+// Tampilkan welcome modal jika tidak ada cache — diurus oleh initFromCache()
+</script>
+</body>
+</html>
